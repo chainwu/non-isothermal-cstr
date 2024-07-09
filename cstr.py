@@ -1,6 +1,7 @@
 import sympy as sp
-from sympy import Symbol, Eq, Function, exp
+from sympy import Symbol, Eq, Function, exp, Number
 from modulus.sym.eq.pde import PDE
+import math
 
 # Constants
 V = 100 # L
@@ -16,6 +17,7 @@ k_0 = 7.2E10  # min^-1
 EoverR = 8750  #k
 delta_H_r = -50000  # J/mol
 UA = 50000   #J/min K
+#k = k_0 * math.exp(-(EoverR/350.))
 
 def k(T):
     return k_0 * sp.exp(-(EoverR/T))
@@ -26,17 +28,23 @@ class CSTR(PDE):
 
     def __init__(self, T_c=300):
         # Define symbols
-        t, C_A, T, T_c = Symbol("t"), Symbol("C_A"), Symbol("T"), Symbol("T_c")
-
+        t, C_A, T = Symbol("t"), Symbol("C_A"), Symbol("T")
 
         # make input variables
         input_variables = {"t":t, "T_c":T_c}
-        T_c = Function("T_c")(t)           # cooling water temp is a function of time
-        C_A = Function("C_A")(t, T_c)    # Concentration of the reactant is a function of time and cooling water temp
-        T = Function("T")(t, T_c)        # Reactor temp is a function of time and cooling water temp
+        if type(T_c) is str:
+            T_c = Function(T_c)(t)           # cooling water temp is a function of time
+        elif type(T_c) in [float, int]:
+            T_c = Number(T_c)
+        C_A = Function(C_A)(t, T_c)    # Concentration of the reactant is a function of time and cooling water temp
+        T = Function(T)(t, T_c)        # Reactor temp is a function of time and cooling water temp
+        #k = Function("k")(T)
 
         # set equations
         self.equations = {}
+
+        # k 
+        #self.equations["k_equation"] = k- (k_0 * sp.exp(-(EoverR/T)))
 
         # Energy balance W=q * rho
         self.equations["energy_balance"] = ((T.diff(t,1)) - (((q / V) * (T_i - T)) + ((-delta_H_r * k(T) * C_A) / (rho * C)) + ((UA *(T_c - T)) / (rho * C * V))))
@@ -45,7 +53,7 @@ class CSTR(PDE):
         self.equations["material_balance"] = ((C_A.diff(t,1)) - ((q / V) * (C_Ai - C_A) - (k(T) * C_A)))
 
 
-cstr=CSTR()
+cstr=CSTR(T_c=290)
 cstr.pprint()
 
 
