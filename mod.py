@@ -1,6 +1,6 @@
 import numpy as np
 import sympy as sp
-from sympy import Symbol, Eq
+from sympy import Symbol, Eq, Number
 
 import modulus
 from modulus.sym.hydra import instantiate_arch, ModulusConfig
@@ -20,10 +20,11 @@ from cstr import CSTR, k_0, EoverR
 @modulus.sym.main(config_path="conf", config_name="config")
 def run(cfg: ModulusConfig) -> None:
     # make list of nodes to unroll graph on
-    reactor = CSTR()
+    T_c=300
+    reactor = CSTR(T_c)
     reactor_net = instantiate_arch(
         input_keys=[Key("t"), Key("T_c")],
-        output_keys=[Key("T"), Key("C_A")],
+        output_keys=[Key("T"), Key("C_A"), Key("k")],
         cfg=cfg.arch.fully_connected,
     )
     nodes = reactor.make_nodes()  + [reactor_net.make_node(name="reactor_network")]
@@ -35,7 +36,6 @@ def run(cfg: ModulusConfig) -> None:
     t = Symbol("t")
     param_range = {t: (0, t_max), "T_c": 300}
     k = Symbol("k")
-
     # make domain
     domain = Domain()
 
@@ -49,7 +49,7 @@ def run(cfg: ModulusConfig) -> None:
             "T": 1.0,
             "C_A": 1.0,
         },
-        parameterization={t: 0, "T_c":300, "T_c__t":0},
+        parameterization={t: 0, "T_c":300},
     )
     domain.add_constraint(IC, name="IC")
 
