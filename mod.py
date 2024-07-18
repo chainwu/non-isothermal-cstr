@@ -17,6 +17,7 @@ from modulus.sym.domain.inferencer.pointwise import PointwiseInferencer
 from modulus.sym.key import Key
 from modulus.sym.node import Node
 from modulus.sym.utils.io.plotter import ValidatorPlotter, InferencerPlotter
+from modulus.sym.geometry.parameterization import Parameterization
 import matplotlib.pyplot as plt
 import sys
 import os
@@ -96,7 +97,7 @@ def run(cfg: ModulusConfig) -> None:
     reactor = CSTR(T_c)
     reactor_net = instantiate_arch(
         input_keys=[Key("t"), Key("T_c")],
-        output_keys=[Key("T"), Key("C_A"), Key("k")],
+        output_keys=[Key("T"), Key("C_A")],
         cfg=cfg.arch.fully_connected,
     )
     nodes = reactor.make_nodes()  + [reactor_net.make_node(name="reactor_network")]
@@ -106,8 +107,9 @@ def run(cfg: ModulusConfig) -> None:
     geo = Point1D(0)
     t_max = 10.0  #min
     t = Symbol("t")
-    param_range = {t: (0, t_max), "T_c": 300}
-    k = Symbol("k")
+    param_range = Parameterization({t: (0, t_max), "T_c": 300})
+    param_range.sample(10000)
+    #k = Symbol("k")
     # make domain
     domain = Domain()
 
@@ -115,13 +117,11 @@ def run(cfg: ModulusConfig) -> None:
     IC = PointwiseBoundaryConstraint(
         nodes=nodes,
         geometry=geo,
-        outvar={"T": 350, "C_A": 0.5, "T__t":0, "C_A__t":0}, 
+        outvar={"T": 350, "C_A": 0.5}, 
         batch_size=cfg.batch_size.IC,
         lambda_weighting={
             "T": 1.0,
             "C_A": 1.0,
-            "T__t":1.0, 
-            "C_A__t":0,
         },
         parameterization={t: 0, "T_c":300},
     )
@@ -138,20 +138,20 @@ def run(cfg: ModulusConfig) -> None:
     domain.add_constraint(interior, "interior")
 
     # add monitors
-    tnpy=np.linspace(0, 10, 1000).reshape(-1,1)
-    tcnpy=np.full((1000), 300.).reshape(-1,1)
-    gmon = PointwiseMonitor(
-        invar={'t':tnpy, 'T_c':tcnpy},
-        output_names=["T", "C_A"],
-        metrics={
-            "Temp": lambda var: torch.mean(var["T"]),
-            "Temp_Std": lambda var: torch.std(var["T"]),
-            "Conc": lambda var: torch.mean(var["C_A"]),
-            "Conc_Std": lambda var: torch.std(var["C_A"]),
-        },
-        nodes=nodes,
-    )
-    domain.add_monitor(gmon)
+    #tnpy=np.linspace(0, 10, 1000).reshape(-1,1)
+    #tcnpy=np.full((1000), 300.).reshape(-1,1)
+    #gmon = PointwiseMonitor(
+    #    invar={'t':tnpy, 'T_c':tcnpy},
+    #    output_names=["T", "C_A"],
+    #    metrics={
+    #        "Temp": lambda var: torch.mean(var["T"]),
+    #        "Temp_Std": lambda var: torch.std(var["T"]),
+    #        "Conc": lambda var: torch.mean(var["C_A"]),
+    #        "Conc_Std": lambda var: torch.std(var["C_A"]),
+    #    },
+    #    nodes=nodes,
+    #)
+    #domain.add_monitor(gmon)
 
     tdict=np.linspace(0, 10, 1000).reshape(-1,1)
     tcdict=np.full((1000), 300.).reshape(-1,1)

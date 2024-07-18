@@ -28,16 +28,18 @@ class CSTR(PDE):
 
     def __init__(self, T_c=300):
         # Define symbols
+        self.T_c = T_c
         t, C_A, T = Symbol("t"), Symbol("C_A"), Symbol("T")
+        #T_c = Symbol("T_c")
 
         # make input variables
         input_variables = {"t":t, "T_c":T_c}
         if type(T_c) is str:
-            T_c = Function(T_c)(t)           # cooling water temp is a function of time
+            T_c = Function("T_c")(t)           # cooling water temp is a function of time
         elif type(T_c) in [float, int]:
             T_c = Number(T_c)
-        C_A = Function(C_A)(t, T_c)    # Concentration of the reactant is a function of time and cooling water temp
-        T = Function(T)(t, T_c)        # Reactor temp is a function of time and cooling water temp
+        C_A = Function("C_A")(t, T_c)    # Concentration of the reactant is a function of time and cooling water temp
+        T = Function("T")(t, T_c)        # Reactor temp is a function of time and cooling water temp
         #k = Function("k")(T)
 
         # set equations
