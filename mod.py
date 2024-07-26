@@ -27,15 +27,15 @@ class ReactorPlotter(InferencerPlotter):
     def __call__(self, invar, outvar):
         try:
             # get input variables
-            t, T_c = invar["t"][:,0], invar["T_c"][:,0]
+            t = invar["t"][:,0]
             #print("shape", t.shape, T_c.shape)
-            C_A, T = outvar["C_A"], outvar["T"]
+            C_A, T, T_c = outvar["C_A"], outvar["T"], outvar["T_c"]
             #print(C_A, T)
         
             # make plot
             plt.figure(figsize=(20,5), dpi=100)
             plt.suptitle("CSTR Reactor")
-            fig, ax=plt.subplots(2,1)
+            fig, ax=plt.subplots(3,1)
             ax[0].plot(t, C_A)
             ax[0].set_xlim([0, 10])
             #ax[0].set_ylim([0, 1])
@@ -44,6 +44,11 @@ class ReactorPlotter(InferencerPlotter):
             ax[1].plot(t, T)
             ax[1].set_title("Reactor Temp (K)")
             ax[1].set_xlim([0, 10])
+            #ax[1].set_ylim([300, 450])
+
+            ax[2].plot(t, T_c)
+            ax[2].set_title("Cooling water Temp (K)")
+            ax[2].set_xlim([0, 10])
             #ax[1].set_ylim([300, 450])
             plt.tight_layout()
 
@@ -90,17 +95,31 @@ class ReactorPlotter(InferencerPlotter):
 #    )
 #    domain.add_inferencer(inf305, "Reactor-305")
 
+
+# takes in a module and applies the specified weight initialization
+def weights_init_uniform_rule(m):
+    classname = m.__class__.__name__
+    # for every Linear layer in a model..
+    if classname.find('Linear') != -1:
+        # get the number of the inputs
+        n = m.in_features
+        y = 1.0/np.sqrt(n)
+        m.weight.data.uniform_(-1, 0)
+        m.bias.data.fill_(0)
+
 @modulus.sym.main(config_path="conf", config_name="config")
 def run(cfg: ModulusConfig) -> None:
     # make list of nodes to unroll graph on
     T_c=300
     reactor = CSTR(T_c)
     reactor_net = instantiate_arch(
-        input_keys=[Key("t"), Key("T_c")],
-        output_keys=[Key("T"), Key("C_A")],
+        input_keys=[Key("t")],
+        output_keys=[Key("T"), Key("C_A"), Key("T_c")],
         cfg=cfg.arch.fully_connected,
     )
     nodes = reactor.make_nodes()  + [reactor_net.make_node(name="reactor_network")]
+
+    #weights_init_uniform_rule(nodes)
 
     # add constraints to solver
     # make geometry
@@ -123,10 +142,27 @@ def run(cfg: ModulusConfig) -> None:
             "T": 1.0,
             "C_A": 1.0,
         },
-        parameterization={t: 0, "T_c":300},
+        parameterization={t: 0},
     )
     domain.add_constraint(IC, name="IC")
 
+    # solve over given time period
+    tc_cond = PointwiseBoundaryConstraint(
+        nodes=nodes,
+        geometry=geo,
+        outvar={"T_c":300},
+        batch_size=cfg.batch_size.Interior,
+        parameterization=param_range,
+    )
+    domain.add_constraint(tc_cond, "tc_cond")
+
+    # add monitors
+    #tnpy=np.linspace(0, 10, 1000).reshape(-1,1)
+    #tcnpy=np.full((1000), 300.).reshape(-1,1)
+    #gmon = PointwiseMonitor(
+    #    invar={'t':tnpy, 'T_c':tcnpy},
+    #    output_names=["T", "C_A"],
+    #    metrics={
     # solve over given time period
     interior = PointwiseBoundaryConstraint(
         nodes=nodes,
@@ -136,14 +172,6 @@ def run(cfg: ModulusConfig) -> None:
         parameterization=param_range,
     )
     domain.add_constraint(interior, "interior")
-
-    # add monitors
-    #tnpy=np.linspace(0, 10, 1000).reshape(-1,1)
-    #tcnpy=np.full((1000), 300.).reshape(-1,1)
-    #gmon = PointwiseMonitor(
-    #    invar={'t':tnpy, 'T_c':tcnpy},
-    #    output_names=["T", "C_A"],
-    #    metrics={
     #        "Temp": lambda var: torch.mean(var["T"]),
     #        "Temp_Std": lambda var: torch.std(var["T"]),
     #        "Conc": lambda var: torch.mean(var["C_A"]),
@@ -153,14 +181,14 @@ def run(cfg: ModulusConfig) -> None:
     #)
     #domain.add_monitor(gmon)
 
-    tdict=np.linspace(0, 10, 1000).reshape(-1,1)
-    tcdict=np.full((1000), 300.).reshape(-1,1)
+    tdict=np.linspace(0, 10, 10000).reshape(-1,1)
+    #tcdict=np.full((1000), 300.).reshape(-1,1)
     inf300 = PointwiseInferencer(
         nodes=nodes,
-        invar={'t': tdict, 'T_c': tcdict},
-        output_names=["C_A", "T"],
+        invar={'t': tdict}, #, 'T_c': tcdict},
+        output_names=["C_A", "T", "T_c"],
         requires_grad=False,
-        batch_size=1000,
+        batch_size=10000,
         plotter=ReactorPlotter()
     )
     domain.add_inferencer(inf300, "Reactor-300")

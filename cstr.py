@@ -22,31 +22,30 @@ UA = 50000   #J/min K
 def k(T):
     return k_0 * sp.exp(-(EoverR/T))
 
-
 class CSTR(PDE):
     name="cstr"
 
     def __init__(self, T_c=300):
         # Define symbols
         self.T_c = T_c
-        t, C_A, T = Symbol("t"), Symbol("C_A"), Symbol("T")
-        #T_c = Symbol("T_c")
+        t, C_A, T, T_c = Symbol("t"), Symbol("C_A"), Symbol("T"), Symbol("T_c")
 
         # make input variables
-        input_variables = {"t":t, "T_c":T_c}
+        input_variables = {"t":t}
         if type(T_c) is str:
             T_c = Function("T_c")(t)           # cooling water temp is a function of time
         elif type(T_c) in [float, int]:
             T_c = Number(T_c)
-        C_A = Function("C_A")(t, T_c)    # Concentration of the reactant is a function of time and cooling water temp
-        T = Function("T")(t, T_c)        # Reactor temp is a function of time and cooling water temp
-        #k = Function("k")(T)
+        C_A = Function("C_A")(t)    # Concentration of the reactant is a function of time and cooling water temp
+        T = Function("T")(t)        # Reactor temp is a function of time and cooling water temp
+        #T_c = Function("T_c")(t)
+        #k = Function("k")(t)
 
         # set equations
         self.equations = {}
 
         # k 
-        #self.equations["k_equation"] = k- (k_0 * sp.exp(-(EoverR/T)))
+        #self.equations["k_equation"] = k - (k_0 * sp.exp(-(EoverR/T)))
 
         # Energy balance W=q * rho
         self.equations["energy_balance"] = ((T.diff(t,1)) - (((q / V) * (T_i - T)) + ((-delta_H_r * k(T) * C_A) / (rho * C)) + ((UA *(T_c - T)) / (rho * C * V))))
