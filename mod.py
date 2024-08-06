@@ -29,7 +29,8 @@ class ReactorPlotter(InferencerPlotter):
             # get input variables
             t = invar["t"][:,0]
             #print("shape", t.shape, T_c.shape)
-            C_A, T, T_c = outvar["C_A"], outvar["T"], outvar["T_c"]
+            C_A, T = outvar["C_A"], outvar["T"]
+            T_c = outvar["T_c"]
             #print(C_A, T)
         
             # make plot
@@ -110,8 +111,8 @@ def weights_init_uniform_rule(m):
 @modulus.sym.main(config_path="conf", config_name="config")
 def run(cfg: ModulusConfig) -> None:
     # make list of nodes to unroll graph on
-    T_c=300
-    reactor = CSTR(T_c)
+    #T_c=300
+    reactor = CSTR()
     reactor_net = instantiate_arch(
         input_keys=[Key("t")],
         output_keys=[Key("T"), Key("C_A"), Key("T_c")],
@@ -126,7 +127,7 @@ def run(cfg: ModulusConfig) -> None:
     geo = Point1D(0)
     t_max = 10.0  #min
     t = Symbol("t")
-    param_range = Parameterization({t: (0, t_max), "T_c": 300})
+    param_range = Parameterization({t: (0, t_max)})
     param_range.sample(10000)
     #k = Symbol("k")
     # make domain
@@ -136,11 +137,12 @@ def run(cfg: ModulusConfig) -> None:
     IC = PointwiseBoundaryConstraint(
         nodes=nodes,
         geometry=geo,
-        outvar={"T": 350, "C_A": 0.5}, 
+        outvar={"T": 350, "C_A": 0.5, "T_c":300}, 
         batch_size=cfg.batch_size.IC,
         lambda_weighting={
             "T": 1.0,
             "C_A": 1.0,
+            "T_c":1.0,
         },
         parameterization={t: 0},
     )

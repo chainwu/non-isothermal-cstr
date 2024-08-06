@@ -25,19 +25,19 @@ def k(T):
 class CSTR(PDE):
     name="cstr"
 
-    def __init__(self, T_c=300):
+    def __init__(self):
         # Define symbols
-        self.T_c = T_c
+        #self.T_c = T_c
         t, C_A, T, T_c = Symbol("t"), Symbol("C_A"), Symbol("T"), Symbol("T_c")
 
         # make input variables
         input_variables = {"t":t}
-        if type(T_c) is str:
-            T_c = Function("T_c")(t)           # cooling water temp is a function of time
-        elif type(T_c) in [float, int]:
-            T_c = Number(T_c)
-        C_A = Function("C_A")(t)    # Concentration of the reactant is a function of time and cooling water temp
-        T = Function("T")(t)        # Reactor temp is a function of time and cooling water temp
+        #if type(T_ci) is str:
+        #    T_c = Function("T_c")(t)           # cooling water temp is a function of time
+        #elif type(T_ci) in [float, int]:
+        #    T_c = Number(T_ci)
+        #C_A = Function("C_A")(t)    # Concentration of the reactant is a function of time and cooling water temp
+        #T = Function("T")(t)        # Reactor temp is a function of time and cooling water temp
         #T_c = Function("T_c")(t)
         #k = Function("k")(t)
 
@@ -53,8 +53,11 @@ class CSTR(PDE):
         # Material balance        
         self.equations["material_balance"] = ((C_A.diff(t,1)) - ((q / V) * (C_Ai - C_A) - (k(T) * C_A)))
 
-
-cstr=CSTR(T_c=290)
-cstr.pprint()
+if __name__ == '__main__':
+    for tx in [290,300,310]:
+        print("T_c=",tx)
+        #cstr=CSTR(T_ci=tx)
+        cstr=CSTR()
+        cstr.pprint()
 
 
